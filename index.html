@@ -282,21 +282,60 @@
         }
 
         function calculateSubjectAverage(page, subjectName) {
-            const inputs = [];
-            for (let i = 1; i <= 4; i++) {
+            // Special case for 'pr': only use first input
+            if (subjectName === 'pr') {
+                const input = document.getElementById(`grade-${page}-${subjectName}-1`);
+                if (input && input.value !== '') {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val) && val >= 0 && val <= 20) {
+                        return val;
+                    }
+                }
+                return 0;
+            }
+            
+            // For all other subjects: first 3 inputs weighted 0.75, 4th input weighted 0.25
+            const firstThree = [];
+            for (let i = 1; i <= 3; i++) {
                 const input = document.getElementById(`grade-${page}-${subjectName}-${i}`);
                 if (input && input.value !== '') {
                     const val = parseFloat(input.value);
                     if (!isNaN(val) && val >= 0 && val <= 20) {
-                        inputs.push(val);
+                        firstThree.push(val);
                     }
                 }
             }
             
-            if (inputs.length === 0) return 0;
+            const fourthInput = document.getElementById(`grade-${page}-${subjectName}-4`);
+            let fourthValue = null;
+            if (fourthInput && fourthInput.value !== '') {
+                const val = parseFloat(fourthInput.value);
+                if (!isNaN(val) && val >= 0 && val <= 20) {
+                    fourthValue = val;
+                }
+            }
             
-            const sum = inputs.reduce((a, b) => a + b, 0);
-            return sum / inputs.length;
+            // If no inputs, return 0
+            if (firstThree.length === 0 && fourthValue === null) return 0;
+            
+            let average = 0;
+            
+            // Calculate average of first three (75% weight)
+            if (firstThree.length > 0) {
+                const firstThreeAvg = firstThree.reduce((a, b) => a + b, 0) / firstThree.length;
+                average += firstThreeAvg * 0.75;
+            }
+            
+            // Add fourth value (25% weight)
+            if (fourthValue !== null) {
+                average += fourthValue * 0.25;
+            } else if (firstThree.length > 0) {
+                // If no 4th value but have first three, only use 75% portion
+                average = average / 0.75; // Normalize if only first three exist
+                average *= 0.75;
+            }
+            
+            return average;
         }
 
         function calculateAverage(page) {
@@ -353,6 +392,40 @@
         }
 
         function createSubjectCard(page, subject) {
+            // For 'pr' subject, only show one input field
+            if (subject.name === 'pr') {
+                return `
+                    <div class="group relative bg-gradient-to-r from-slate-800/40 to-slate-800/20 rounded-2xl p-4 sm:p-5 border border-slate-700/50 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/20">
+                        <div class="flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
+                            <div class="flex-1 grid grid-cols-1 gap-2">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="20"
+                                    step="0.25"
+                                    id="grade-${page}-${subject.name}-1"
+                                    class="w-full px-2 sm:px-3 py-2 bg-slate-900/80 border-2 border-slate-700 rounded-lg focus:border-indigo-500 focus:outline-none text-center font-bold text-white text-xs sm:text-sm transition-all duration-300 focus:shadow-lg focus:shadow-indigo-500/20"
+                                    placeholder="0-20"
+                                    oninput="handleGradeInput('${page}', '${subject.name}')"
+                                />
+                            </div>
+                            
+                            <div class="flex items-center gap-3 lg:gap-4 flex-shrink-0">
+                                <div class="text-center">
+                                    <div class="text-xs text-indigo-400 mb-1">Moy</div>
+                                    <div class="font-bold text-white text-sm sm:text-base" id="avg-${page}-${subject.name}">--</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-xs text-indigo-400 mb-1">Points</div>
+                                    <div class="font-bold text-white text-sm sm:text-base" id="points-${page}-${subject.name}">0.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // For all other subjects, show all 4 inputs
             return `
                 <div class="group relative bg-gradient-to-r from-slate-800/40 to-slate-800/20 rounded-2xl p-4 sm:p-5 border border-slate-700/50 hover:border-indigo-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/20">
                     <div class="flex flex-col lg:flex-row lg:items-center gap-3 sm:gap-4">
@@ -369,16 +442,20 @@
                         
                         <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
                             ${[1, 2, 3, 4].map(i => `
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="20"
-                                    step="0.25"
-                                    id="grade-${page}-${subject.name}-${i}"
-                                    class="w-full px-2 sm:px-3 py-2 bg-slate-900/80 border-2 border-slate-700 rounded-lg focus:border-indigo-500 focus:outline-none text-center font-bold text-white text-xs sm:text-sm transition-all duration-300 focus:shadow-lg focus:shadow-indigo-500/20"
-                                    placeholder="0-20"
-                                    oninput="handleGradeInput('${page}', '${subject.name}')"
-                                />
+                                <div class="relative">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="20"
+                                        step="0.25"
+                                        id="grade-${page}-${subject.name}-${i}"
+                                        class="w-full px-2 sm:px-3 py-2 bg-slate-900/80 border-2 border-slate-700 rounded-lg focus:border-indigo-500 focus:outline-none text-center font-bold text-white text-xs sm:text-sm transition-all duration-300 focus:shadow-lg focus:shadow-indigo-500/20"
+                                        placeholder="0-20"
+                                        oninput="handleGradeInput('${page}', '${subject.name}')"
+                                    />
+                                    ${i === 4 ? '<div class="absolute -top-2 -right-2 bg-purple-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">25%</div>' : ''}
+                                    ${i <= 3 ? '<div class="absolute -top-2 -right-2 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">75%</div>' : ''}
+                                </div>
                             `).join('')}
                         </div>
                         
@@ -407,7 +484,8 @@
             const subjects = page === 'sc-pc' ? subjectsSCPC : subjectsSCECO;
             
             subjects.forEach(subject => {
-                for (let i = 1; i <= 4; i++) {
+                const inputCount = subject.name === 'pr' ? 1 : 4;
+                for (let i = 1; i <= inputCount; i++) {
                     const input = document.getElementById(`grade-${page}-${subject.name}-${i}`);
                     if (input) input.value = '';
                 }
@@ -438,4 +516,15 @@
         renderSubjects('sc-eco');
     </script>
 </body>
-</html>
+</html>shrink-0 lg:w-32">
+                                <label class="font-bold text-white uppercase text-sm sm:text-base tracking-wider">
+                                    ${subject.name}
+                                </label>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs sm:text-sm text-indigo-400 font-medium">
+                                        Coef: ${subject.coefficient}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-
