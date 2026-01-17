@@ -141,7 +141,7 @@
                                 <span class="text-xs sm:text-sm text-indigo-300 font-medium">Total Points</span>
                             </div>
                             <div class="text-2xl sm:text-3xl font-bold text-white" id="totalPoints-sc-eco">0.00</div>
-                            <div class="text-xs sm:text-sm text-indigo-400 mt-1">sur 800</div>
+                            <div class="text-xs sm:text-sm text-indigo-400 mt-1">sur 880</div>
                         </div>
                     </div>
 
@@ -154,7 +154,7 @@
                                 </svg>
                                 <span class="text-xs sm:text-sm text-purple-300 font-medium">Coefficient Total</span>
                             </div>
-                            <div class="text-2xl sm:text-3xl font-bold text-white">40</div>
+                            <div class="text-2xl sm:text-3xl font-bold text-white">44</div>
                             <div class="text-xs sm:text-sm text-purple-400 mt-1">matières</div>
                         </div>
                     </div>
@@ -294,6 +294,24 @@
                 return 0;
             }
             
+            // Special case for 'math': only use first 3 inputs (100% weight, simple average)
+            if (subjectName === 'math') {
+                const inputs = [];
+                for (let i = 1; i <= 3; i++) {
+                    const input = document.getElementById(`grade-${page}-${subjectName}-${i}`);
+                    if (input && input.value !== '') {
+                        const val = parseFloat(input.value);
+                        if (!isNaN(val) && val >= 0 && val <= 20) {
+                            inputs.push(val);
+                        }
+                    }
+                }
+                
+                if (inputs.length === 0) return 0;
+                const sum = inputs.reduce((a, b) => a + b, 0);
+                return sum / inputs.length;
+            }
+            
             // For all other subjects: first 3 inputs weighted 0.75, 4th input weighted 0.25
             const firstThree = [];
             for (let i = 1; i <= 3; i++) {
@@ -340,7 +358,7 @@
 
         function calculateAverage(page) {
             const subjects = page === 'sc-pc' ? subjectsSCPC : subjectsSCECO;
-            const totalCoeff = page === 'sc-pc' ? 36 : 40;
+            const totalCoeff = page === 'sc-pc' ? 36 : 44;
             
             let sum = 0;
             let count = 0;
@@ -484,7 +502,10 @@
             const subjects = page === 'sc-pc' ? subjectsSCPC : subjectsSCECO;
             
             subjects.forEach(subject => {
-                const inputCount = subject.name === 'pr' ? 1 : 4;
+                let inputCount = 4;
+                if (subject.name === 'pr') inputCount = 1;
+                if (subject.name === 'math') inputCount = 3;
+                
                 for (let i = 1; i <= inputCount; i++) {
                     const input = document.getElementById(`grade-${page}-${subject.name}-${i}`);
                     if (input) input.value = '';
